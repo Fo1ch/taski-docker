@@ -1,0 +1,36 @@
+volumes:
+  pg_data:
+  static: # Общая "флешка" для статики бэкенда и фронтенда
+
+services:
+  db:
+    image: postgres:13.10
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend/
+    env_file: .env
+    volumes:
+      - static:/backend_static # Подключаем волюм для сбора статики Django
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend/
+    env_file: .env
+    volumes:
+      - static:/frontend_static # Подключаем волюм для сборки фронта
+    # Переопределяем команду: копируем билд фронта в волюм и выключаем контейнер
+    command: cp -r /app/build/. /frontend_static/.
+
+  gateway:
+    build: ./gateway/
+    volumes:
+      - static:/staticfiles # Nginx забирает всю статику отсюда
+    ports:
+      - 8000:80 # Пробрасываем порт: при заходе на localhost:8000 мы попадем в Nginx
+    depends_on:
+      - backend
+      - frontend
